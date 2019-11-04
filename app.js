@@ -7,7 +7,7 @@ app.use(bodyParser.json());
 let expo = new Expo();
 var somePushTokens = []
 var messages = []
-var base = new Airtable({apiKey: 'keyCguJZNuPquR5Ns'}).base('app4fXK49bqcjDMEo');
+var base = new Airtable({apiKey: ''}).base('app4fXK49bqcjDMEo');
 
 base('Customers').select({
     view: "Customers",

@@ -1,11 +1,11 @@
 import Airtable from 'airtable';
 
-import getEnvVars from '../environment';
+import getEnvVars from './environment';
 
 // base is shared across our screens for Airtable API calls
 /**
  * Usage:
- * import { base } from "../lib/common.js"
+ * import { BASE } from "../lib/common"
  * BASE("Products")...
  **/
 
