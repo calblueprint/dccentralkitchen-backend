@@ -7,14 +7,19 @@ app.use(bodyParser.json());
 let expo = new Expo();
 var somePushTokens = []
 var messages = []
-var base = new Airtable({apiKey: ''}).base('app4fXK49bqcjDMEo');
+var pushTokenIds = []
+var base = new Airtable({apiKey: 'keyCguJZNuPquR5Ns'}).base('app4fXK49bqcjDMEo');
 
 base('Customers').select({
     view: "Customers",
 }).eachPage(function page(records, fetchNextPage) {
     records.forEach(function(record) {
         console.log('Retrieved', record.get('Name'));
-        somePushTokens.push(record.get('Push Token'))
+        let currId = record.get('Push Tokens')
+        if (currId) {
+            somePushTokens = somePushTokens.concat(record.get('Push Tokens'))
+            console.log(somePushTokens)
+        }
     });
     fetchNextPage();
 
@@ -22,9 +27,20 @@ base('Customers').select({
     if (err) { console.error(err); return; }
 });
 
+
+
+
 async function sendPush(title, info){
-    console.log(title);
-    for (let pushToken of somePushTokens) {
+    for( let id of somePushTokens ){
+        console.log(id)
+        base('Push Tokens').find(id, function(err, record) {
+            if (err) { console.error(err); return; }
+            console.log('Retrieved', record.id);
+            pushTokenIds.push(record.get('Name'))
+        });
+    }
+    console.log(pushTokenIds)
+    for (let pushToken of pushTokenIds) {
         // Each push token looks like ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
 
         // Check that all your push tokens appear to be valid Expo push tokens
