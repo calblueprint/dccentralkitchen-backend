@@ -5,11 +5,13 @@ const Airtable = require('airtable');
 const app = express();
 app.use(bodyParser.json());
 let expo = new Expo();
-var somePushTokens = []
+//var somePushTokens = []
 var messages = []
-var pushTokenIds = []
-var base = new Airtable({apiKey: 'keyCguJZNuPquR5Ns'}).base('app4fXK49bqcjDMEo');
+var expoTokens = []
+var base = new Airtable({apiKey: ''}).base('');
 
+// old code used to get ids
+/*//get push token ids from customer records in a global array of push tokens ids
 base('Customers').select({
     view: "Customers",
 }).eachPage(function page(records, fetchNextPage) {
@@ -25,30 +27,64 @@ base('Customers').select({
 
 }, function done(err) {
     if (err) { console.error(err); return; }
-});
+});*/
+
+//iterate through the ids of tokens then get the corresponding expo token for the ids
+/*for( let id of somePushTokens ){
+    console.log(id)
+    base('Push Tokens').find(id, function(err, record) {
+        if (err) { console.error(err); return; }
+        console.log('Retrieved', record.id);
+        expoTokens.push(record.get('Token'))
+    });
+}*/
+
+//returns promise that sets expo push tokens to the corresponding tokens
+const convertExpoIds = function async() {
+    return base('Customers')
+            .select({
+                view: "Customers",
+            })
+            .all()
+            .then(records => {
+                //gets all individual records of Customer table
+                let PushTokenRecords = []
+                for (let record of records){
+                    //gets the Push token record ids associated with the customer
+                    let currPushRecord = record.get('Push Tokens')
+                    //if not null then concat the list to overall list of ids
+                    if  (currPushRecord) {
+                        PushTokenRecords = PushTokenRecords.concat(currPushRecord);
+                    }
+                }
+                //returns ids
+                return PushTokenRecords;
+            }).then( ids => {
+                //takes ids then maps them to an array of Promises of Push Token records that map to the ids
+                let expoT = ids.map(id =>base('Push Tokens').find(id))
+                //resolves promises
+                return Promise.all(expoT);
+            }).then(records => {
+                //goes through each record and find ExpoToken and add to list
+                for (let record of records) {
+                    let currToken = record.get('Token')
+                    expoTokens = expoTokens.concat(currToken)
+                }
+                return expoTokens;
+            })
+    };
 
 
-
-
+convertExpoIds().then(console.log);
 async function sendPush(title, info){
-    for( let id of somePushTokens ){
-        console.log(id)
-        base('Push Tokens').find(id, function(err, record) {
-            if (err) { console.error(err); return; }
-            console.log('Retrieved', record.id);
-            pushTokenIds.push(record.get('Name'))
-        });
-    }
-    console.log(pushTokenIds)
-    for (let pushToken of pushTokenIds) {
-        // Each push token looks like ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
 
+    //iterate through each token and send message
+    for (let pushToken of expoTokens) {
         // Check that all your push tokens appear to be valid Expo push tokens
         if (!Expo.isExpoPushToken(pushToken)) {
             console.error(`Push token ${pushToken} is not a valid Expo push token`);
             continue;
         }
-
         // Construct a message (see https://docs.expo.io/versions/latest/guides/push-notifications.html)
         messages.push({
             to: pushToken,
@@ -57,13 +93,10 @@ async function sendPush(title, info){
             body: info,
             data: { withSome: 'data' },
         })
+        console.log(expoTokens)
     }
 
-// The Expo push notification service accepts batches of notifications so
-// that you don't need to send 1000 requests to send 1000 notifications. We
-// recommend you batch your notifications to reduce the number of requests
-// and to compress them (notifications with similar content will get
-// compressed).
+    //taken from expo example
     let chunks = expo.chunkPushNotifications(messages);
     let tickets = [];
     (async () => {
@@ -86,6 +119,7 @@ async function sendPush(title, info){
     })();
 };
 
+//@TODO kyle add auth.
 app.post('/push', function(req, res) {
     console.log(req.body)
     var title = req.body.title;
